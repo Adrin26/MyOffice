@@ -1,0 +1,33 @@
+# Secrets
+.env
+.env.*
+!.env.example
+**/.env
+!**/.env.example
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/smoke-output/
+
+# Legacy CLI output (rewritten on every run)
+/report.md
+
+# App data (SQLite database and per-run artifacts)
+data/
+runs/
+
+# ai_research_team has its own (empty) git repository
+ai_research_team/
+
+# OS / editor
+.DS_Store
+Thumbs.db
