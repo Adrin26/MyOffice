@@ -41,7 +41,7 @@ export function CameraController({ centerZ, front, seats }: Props) {
       pos = new THREE.Vector3(0, 30, centerZ + 0.01)
     } else if (mode === 'presentation') {
       target = new THREE.Vector3(0, SCREEN.y, SCREEN.z)
-      pos = new THREE.Vector3(0, SCREEN.y + 0.3, SCREEN.z + 8.6 * widen)
+      pos = new THREE.Vector3(0, SCREEN.y + 0.3, SCREEN.z + 9.4 * widen)
     } else {
       target = new THREE.Vector3(0, 1.2, centerZ - 0.5)
       pos = new THREE.Vector3(0, 13 + (front - 8) * 0.25, front + 9).sub(target).multiplyScalar(widen).add(target)

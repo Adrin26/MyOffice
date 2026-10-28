@@ -23,6 +23,7 @@ export function FloatingAgentLabel({ agent, y, highlighted }: { agent: Agent; y:
   return (
     <Html position={[0, y, 0]} center zIndexRange={[20, 0]} portal={htmlPortal} style={{ pointerEvents: 'none' }}>
       <div
+        data-testid="agent-label"
         className={`select-none whitespace-nowrap rounded-lg border-2 px-2 py-0.5 text-center shadow-lg transition-transform ${
           highlighted ? 'scale-110 border-amber-300 bg-slate-900/95' : 'border-white/20 bg-slate-900/80'
         }`}

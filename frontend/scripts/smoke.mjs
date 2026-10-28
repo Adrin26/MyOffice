@@ -42,13 +42,13 @@ await check('office renders', async () => {
 })
 
 await check('agent labels', async () => {
-  const labels = await page.locator('div.select-none').allInnerTexts()
+  const labels = await page.locator('[data-testid="agent-label"]').allInnerTexts()
   if (labels.length < 3) throw new Error(`only ${labels.length} agent labels visible`)
   return labels.map((t) => t.replace(/\s+/g, ' ')).join(' | ')
 })
 
 await check('click avatar selects agent', async () => {
-  const label = page.locator('div.select-none', { hasText: 'Business Analyst' }).first()
+  const label = page.locator('[data-testid="agent-label"]', { hasText: 'Business Analyst' }).first()
   const box = await label.boundingBox({ timeout: 5000 })
   if (!box) throw new Error('label not found')
   await page.mouse.click(box.x + box.width / 2, box.y + box.height + 45)

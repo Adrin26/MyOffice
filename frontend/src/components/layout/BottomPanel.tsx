@@ -14,7 +14,14 @@ export const LEVEL_ICON: Record<EventLevel, typeof Info> = {
 export function BottomPanel() {
   const events = useWorkplace((s) => s.events)
   const setPanel = useWorkplace((s) => s.setPanel)
-  const [open, setOpen] = useState(true)
+  const presenting = useWorkplace((s) => s.presentation.open && s.cameraMode === 'presentation')
+  const [open, setOpen] = useState(!presenting)
+  // Collapse while the wall display is framed (it would cover the report), reopen afterwards.
+  const [wasPresenting, setWasPresenting] = useState(presenting)
+  if (presenting !== wasPresenting) {
+    setWasPresenting(presenting)
+    setOpen(!presenting)
+  }
   const recent = events.slice(-40).reverse()
 
   return (

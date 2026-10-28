@@ -29,7 +29,7 @@ export function OfficeScene() {
 
   return (
     <div
-      className="relative h-full w-full"
+      className="relative h-full w-full select-none"
       ref={(el) => {
         if (el) htmlPortal.current = el
         setOverlayHost(el)
