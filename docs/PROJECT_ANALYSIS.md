@@ -1,6 +1,6 @@
 # Project Analysis (Phase Zero)
 
-Inspection date: 2026-10-28. No files were modified during the inspection.
+Inspection date: 2026-10-28. No files were modified during the inspection. This is the record of the repository **before** the workplace was built; for the current design see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 1. What is in the repository
 
