@@ -69,6 +69,7 @@ export function StartRunDialog() {
   const appSettings = useWorkplace((s) => s.appSettings)
   const agents = useWorkplace((s) => s.agents)
   const health = useWorkplace((s) => s.health)
+  const models = useWorkplace((s) => s.models)
   const toast = useWorkplace((s) => s.toast)
   const closePresentation = useWorkplace((s) => s.closePresentation)
   const [values, setValues] = useState<Record<string, string>>({})
@@ -88,6 +89,9 @@ export function StartRunDialog() {
 
   if (!open || !project) return null
   const participants = Object.values(agents).filter((a) => a.participant)
+  const runModels = participants.map((a) => a.llm_model ?? models?.default ?? '')
+  const usesOpenAI = runModels.some((m) => !m.startsWith('ollama/'))
+  const usesLocal = runModels.some((m) => m.startsWith('ollama/'))
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -116,12 +120,18 @@ export function StartRunDialog() {
         <div>
           <h2 className="text-lg font-black text-white">Start the workflow</h2>
           <p className="text-sm text-slate-400">
-            Runs the real CrewAI crew from <code>learn_crewai.py</code> with {participants.length} agents. This uses your OpenAI credits.
+            Runs the real CrewAI crew from <code>learn_crewai.py</code> with {participants.length} agents.
+            {usesOpenAI ? ' Agents on OpenAI models use your OpenAI credits.' : ' All agents use local Ollama models.'}
           </p>
         </div>
-        {health && !health.openai_key_configured && (
+        {health && usesOpenAI && !health.openai_key_configured && (
           <div role="alert" className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-100">
-            OPENAI_API_KEY is not configured on the backend. The run will be rejected.
+            OPENAI_API_KEY is not configured on the backend, and some agents use OpenAI models. The run will be rejected.
+          </div>
+        )}
+        {health && usesLocal && !health.ollama_available && (
+          <div role="alert" className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-100">
+            Ollama is not reachable, and some agents use local models. Start it with <code>ollama serve</code>.
           </div>
         )}
         {project.inputs.map((f) => (

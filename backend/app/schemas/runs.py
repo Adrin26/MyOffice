@@ -163,5 +163,6 @@ class HealthOut(BaseModel):
     version: str
     crewai_version: str
     openai_key_configured: bool
+    ollama_available: bool
     schema_version: int
     active_run_id: str | None

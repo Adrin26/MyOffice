@@ -21,7 +21,15 @@ function resetStore() {
   useWorkplace.getState().receiveSnapshot(makeSnapshot())
   useWorkplace.setState({
     tools: [{ key: 'calculator', label: 'Calculator', description: 'Math', available: true, unavailable_reason: null }],
-    models: { default: 'gpt-4o-mini', allowed: ['gpt-4o-mini'] },
+    models: {
+      default: 'gpt-4o-mini',
+      allowed: ['gpt-4o-mini', 'ollama/qwen2.5:7b'],
+      options: [
+        { id: 'gpt-4o-mini', label: 'gpt-4o-mini', provider: 'openai', available: true, unavailable_reason: null },
+        { id: 'ollama/qwen2.5:7b', label: 'qwen2.5:7b', provider: 'ollama', available: true, unavailable_reason: null },
+      ],
+      ollama_available: true,
+    },
   })
 }
 
@@ -118,6 +126,19 @@ describe('add agent form', () => {
     render(<AgentForm agent={makeAgent()} />)
     expect(screen.getByLabelText('Goal')).toBeDisabled()
     expect(screen.getByLabelText('Agent name')).toBeEnabled()
+  })
+
+  it('lets a built-in agent switch to a local Ollama model', async () => {
+    const agent = makeAgent()
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ...agent, llm_model: 'ollama/qwen2.5:7b' }), { status: 200 }))
+    render(<AgentForm agent={agent} />)
+    fireEvent.change(screen.getByLabelText('LLM model'), { target: { value: 'ollama/qwen2.5:7b' } })
+    await userEvent.click(screen.getByRole('button', { name: /Save changes/ }))
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalled())
+    const [url, init] = fetchSpy.mock.calls[0]
+    expect(url).toBe(`/api/agents/${agent.id}`)
+    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ llm_model: 'ollama/qwen2.5:7b' })
   })
 })
 

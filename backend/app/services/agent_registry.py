@@ -15,9 +15,10 @@ from app.database.models import AgentRecord
 from app.database.session import Database
 from app.projects import ProjectDefinition
 from app.schemas.agents import AgentAppearance, AgentCreate, AgentUpdate
+from app.services.model_catalog import ModelCatalog
 from app.services.tool_registry import validate_tool_keys
 
-BUILTIN_EDITABLE = {"name", "appearance", "workstation"}
+BUILTIN_EDITABLE = {"name", "appearance", "workstation", "llm_model"}
 TEXT_FIELDS = ("role", "goal", "backstory", "task_description", "task_expected_output")
 
 _PALETTE = [
@@ -46,10 +47,12 @@ def template_fields(text: str) -> set[str]:
 
 
 class AgentRegistry:
-    def __init__(self, db: Database, settings: Settings, project: ProjectDefinition):
+    def __init__(self, db: Database, settings: Settings, project: ProjectDefinition,
+                 catalog: ModelCatalog | None = None):
         self.db = db
         self.settings = settings
         self.project = project
+        self.catalog = catalog or ModelCatalog(settings)
 
     # ---- startup -------------------------------------------------------
     def seed_builtins(self) -> None:
@@ -146,9 +149,11 @@ class AgentRegistry:
                 if forbidden:
                     raise ValidationFailed(
                         "Built-in agents are defined in learn_crewai.py; only name, "
-                        "appearance and workstation can be changed here.",
+                        "model, appearance and workstation can be changed here.",
                         sorted(forbidden),
                     )
+                if problem := self.catalog.validate(changes.get("llm_model")):
+                    raise ValidationFailed("Invalid agent configuration", [problem])
             if agent_id in locked_ids and changes.get("enabled") is False:
                 raise ConflictError("This agent is part of the running workflow")
 
@@ -189,9 +194,8 @@ class AgentRegistry:
     def _validate(self, d: dict[str, Any]) -> None:
         problems: list[str] = []
         problems += validate_tool_keys(d.get("tools") or [])
-        model = d.get("llm_model")
-        if model and model not in self.settings.allowed_models:
-            problems.append(f"Model '{model}' is not in the approved list")
+        if problem := self.catalog.validate(d.get("llm_model")):
+            problems.append(problem)
         allowed_vars = {f.name for f in self.project.inputs}
         for name in TEXT_FIELDS:
             text = d.get(name)

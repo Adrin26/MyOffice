@@ -47,6 +47,13 @@ def test_default_model_from_env(monkeypatch):
     assert agents["writer"].llm.model == "gpt-4.1-mini"
 
 
+def test_per_agent_models():
+    agents = learn_crewai.build_agents(llm="gpt-4o-mini", agent_llms={"researcher": "ollama/qwen2.5:7b"})
+    assert agents["researcher"].llm.model == "qwen2.5:7b"
+    assert agents["researcher"].llm.provider == "ollama"
+    assert agents["analyst"].llm.model == "gpt-4o-mini"
+
+
 def test_extras_are_appended_after_original_pipeline():
     extra_agent = Agent(role="Extra", goal="Extra goal", backstory="Extra story", llm="gpt-4o-mini")
     extra_task = Task(description="Extra {topic}", expected_output="x", agent=extra_agent)

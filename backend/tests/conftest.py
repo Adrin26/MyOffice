@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 from app.core.config import Settings
 from app.main import create_app
 from app.services.crewai_service import CrewAIService
+from app.services.model_catalog import ModelCatalog
 
 REPORT = """# Test Report
 
@@ -80,6 +81,12 @@ def _no_real_credentials(request, monkeypatch):
         return
     monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    monkeypatch.setattr(ModelCatalog, "ollama_models", lambda self: list(OLLAMA_MODELS))
+
+
+# What the fake local Ollama server reports as installed.
+OLLAMA_MODELS = ["llama3.2:latest", "qwen2.5:7b"]
 
 
 @pytest.fixture

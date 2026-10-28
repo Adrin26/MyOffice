@@ -119,6 +119,16 @@ class ToolOut(BaseModel):
     unavailable_reason: str | None = None
 
 
+class ModelOption(BaseModel):
+    id: str
+    label: str
+    provider: Literal["openai", "ollama"]
+    available: bool
+    unavailable_reason: str | None = None
+
+
 class ModelsOut(BaseModel):
     default: str
     allowed: list[str]
+    options: list[ModelOption]
+    ollama_available: bool

@@ -36,6 +36,10 @@ export function validateAgent(
     if (value.length < min) errors[key] = `At least ${min} characters`
     else if (value.length > max) errors[key] = `At most ${max} characters`
   }
+  // Local models stay valid while Ollama is stopped; the backend checks they are installed at run time.
+  if (v.llm_model && !opts.allowedModels.includes(v.llm_model) && !v.llm_model.startsWith('ollama/')) {
+    errors.llm_model = 'Model is not approved'
+  }
   if (opts.builtin) return errors
 
   for (const key of ['role', 'goal', 'backstory', 'task_description', 'task_expected_output'] as const) {
@@ -54,7 +58,6 @@ export function validateAgent(
   if (v.tools.length > 5) errors.tools = 'Select at most 5 tools'
   const unknown = v.tools.filter((t) => !opts.allowedTools.includes(t))
   if (unknown.length) errors.tools = `Not allowed: ${unknown.join(', ')}`
-  if (v.llm_model && !opts.allowedModels.includes(v.llm_model)) errors.llm_model = 'Model is not approved'
   if (v.enabled && (!v.task_description?.trim() || !v.task_expected_output?.trim())) {
     errors.enabled = 'Add a task description and expected output to join the workflow'
   }

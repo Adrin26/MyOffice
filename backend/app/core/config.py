@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     allowed_models: list[str] = Field(
         default_factory=lambda: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"]
     )
+    # Local models served by Ollama are offered as "ollama/<name>". Empty disables them.
+    ollama_base_url: str = "http://localhost:11434"
     max_custom_participants: int = 5
 
     @property

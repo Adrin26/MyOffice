@@ -3,7 +3,8 @@ import threading
 from app.core.config import Settings
 from app.database.models import RunRecord, TaskRecord
 from app.services.crewai_service import CrewAIService
-from tests.conftest import VALID_AGENT, wait_for_run
+from app.services.model_catalog import ModelCatalog
+from tests.conftest import VALID_AGENT, FakeLLM, wait_for_run
 
 PROJECT = "ai-research-team"
 
@@ -141,6 +142,38 @@ def test_missing_api_key_reports_not_ready(make_client, monkeypatch):
         resp = start(client)
         assert resp.status_code == 503
         assert "OPENAI_API_KEY" in resp.json()["error"]["message"]
+
+
+def test_each_agent_gets_its_own_model(make_client, behaviour):
+    requested: list[str | None] = []
+
+    def factory(model):
+        requested.append(model)
+        return FakeLLM(model=model or "fake-model", behaviour=behaviour)
+
+    with make_client(CrewAIService(llm_factory=factory)) as client:
+        client.patch("/api/agents/agt_researcher", json={"llm_model": "ollama/qwen2.5:7b"})
+        client.post("/api/agents", json={**VALID_AGENT, "llm_model": "ollama/llama3.2:latest"})
+        run = wait_for_run(client, start(client).json()["id"])
+        assert run["status"] == "completed"
+    assert "ollama/qwen2.5:7b" in requested and "ollama/llama3.2:latest" in requested
+    assert None in requested  # analyst and writer keep the default model
+
+
+def test_local_only_run_needs_no_openai_key_but_needs_installed_models(make_client, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with make_client(CrewAIService()) as client:
+        for key in ("researcher", "analyst"):
+            client.patch(f"/api/agents/agt_{key}", json={"llm_model": "ollama/qwen2.5:7b"})
+        client.patch("/api/agents/agt_writer", json={"llm_model": "ollama/mistral:7b"})
+        resp = start(client)
+        assert resp.status_code == 503
+        message = resp.json()["error"]["message"]
+        assert "OPENAI_API_KEY" not in message
+        assert "ollama pull mistral:7b" in message
+
+        monkeypatch.setattr(ModelCatalog, "ollama_models", lambda self: None)
+        assert "not reachable" in start(client).json()["error"]["message"]
 
 
 def test_restart_marks_interrupted_runs_failed_and_keeps_history(make_client, settings):

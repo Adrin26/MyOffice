@@ -1,5 +1,5 @@
 import os
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -15,23 +15,26 @@ MODEL = os.getenv("OPENAI_MODEL", DEFAULT_MODEL)
 
 
 def require_api_key() -> None:
-    if not os.getenv("OPENAI_API_KEY"):
+    # Local Ollama models ("ollama/qwen2.5:7b") need no OpenAI key.
+    if not os.getenv("OPENAI_MODEL", DEFAULT_MODEL).startswith("ollama/") and not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("Missing OPENAI_API_KEY")
 
 
-def build_agents(llm: Any = None) -> dict[str, Agent]:
+def build_agents(llm: Any = None, agent_llms: Mapping[str, Any] | None = None) -> dict[str, Agent]:
     """Create fresh instances of the three original agents.
 
-    `llm` defaults to the OPENAI_MODEL setting. A model name or a CrewAI LLM
-    object may be passed.
+    `llm` defaults to the OPENAI_MODEL setting. A model name (e.g. "gpt-4o-mini"
+    or "ollama/qwen2.5:7b") or a CrewAI LLM object may be passed.
+    `agent_llms` overrides it per agent, keyed by "researcher", "analyst", "writer".
     """
     llm = llm or os.getenv("OPENAI_MODEL", DEFAULT_MODEL)
+    agent_llms = agent_llms or {}
 
     researcher = Agent(
         role = "Researcher",
         goal = "To identify important ideas, opportunities, and risks about {topic}",
         backstory = "You are a careful researcher who separates established facts from assumptions and identifies questions needing verification.",
-        llm = llm,
+        llm = agent_llms.get("researcher", llm),
         tools = [],
         verbose=True,
         allow_delegation=False,
@@ -42,7 +45,7 @@ def build_agents(llm: Any = None) -> dict[str, Agent]:
         goal = "Evaluate research findings and produce practical insights.",
         backstory = ("You are a business analyst who compares benefits, risks, "
                      "trade-offs, and implementation challenges."),
-        llm = llm,
+        llm = agent_llms.get("analyst", llm),
         tools = [],
         verbose=True,
         allow_delegation=False,
@@ -55,7 +58,7 @@ def build_agents(llm: Any = None) -> dict[str, Agent]:
             "You write concise professional reports for readers who "
             "need actionable recommendations rather than jargon"
         ),
-        llm=llm,
+        llm=agent_llms.get("writer", llm),
         tools=[],
         verbose=True,
         allow_delegation=False,
@@ -115,13 +118,14 @@ def build_crew(
     output_file: str = REPORT_FILE,
     extra_agents: Sequence[Agent] = (),
     extra_tasks: Sequence[Task] = (),
+    agent_llms: Mapping[str, Any] | None = None,
 ) -> Crew:
     """Build a fresh research crew.
 
     `extra_agents` / `extra_tasks` are appended after the original pipeline,
     so the original three tasks always run first and unchanged.
     """
-    agents = build_agents(llm)
+    agents = build_agents(llm, agent_llms)
     tasks = build_tasks(agents, output_file=output_file)
     return Crew(
         agents=[*agents.values(), *extra_agents],

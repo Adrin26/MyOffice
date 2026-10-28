@@ -78,6 +78,8 @@ interface WorkplaceStore extends SyncState {
   setPrefs: (p: Partial<UiPrefs>) => void
   setAppSettings: (s: AppSettings) => void
   loadMeta: () => Promise<void>
+  /** Re-reads the model list so newly started or pulled Ollama models appear. */
+  refreshModels: () => Promise<void>
 }
 
 const PREFS_KEY = 'workplace.prefs'
@@ -213,5 +215,12 @@ export const useWorkplace = create<WorkplaceStore>((set, get) => ({
       ...(settings.status === 'fulfilled' ? { appSettings: settings.value } : {}),
       ...(health.status === 'fulfilled' ? { health: health.value } : {}),
     })
+  },
+  refreshModels: async () => {
+    try {
+      set({ models: await api.models() })
+    } catch {
+      // Keep the previous list; the backend may be restarting.
+    }
   },
 }))

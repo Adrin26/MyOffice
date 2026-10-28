@@ -47,6 +47,7 @@ export function AgentForm({ agent, onDone }: { agent?: Agent; onDone?: (a: Agent
   const [errors, setErrors] = useState<FormErrors>({})
   const [busy, setBusy] = useState(false)
   const builtin = agent?.kind === 'builtin'
+  const refreshModels = useWorkplace((s) => s.refreshModels)
 
   const allowedPlaceholders = project?.inputs.map((i) => i.name) ?? ['topic']
   const occupied = useMemo(() => {
@@ -86,7 +87,7 @@ export function AgentForm({ agent, onDone }: { agent?: Agent; onDone?: (a: Agent
       let saved: Agent
       if (agent) {
         const patch: Partial<AgentInput> = builtin
-          ? { name: payload.name, appearance: payload.appearance, workstation: payload.workstation ?? undefined }
+          ? { name: payload.name, llm_model: payload.llm_model, appearance: payload.appearance, workstation: payload.workstation ?? undefined }
           : { ...payload, workstation: payload.workstation ?? undefined }
         saved = await api.updateAgent(agent.id, patch)
         toast({ level: 'success', title: `Saved ${saved.name}` })
@@ -107,6 +108,12 @@ export function AgentForm({ agent, onDone }: { agent?: Agent; onDone?: (a: Agent
 
   const err = (k: keyof AgentInput) => errors[k]
   const disabledPrompt = builtin
+  const openaiOptions = models?.options.filter((o) => o.provider === 'openai') ?? []
+  const localOptions = models?.options.filter((o) => o.provider === 'ollama') ?? []
+  const missingSelected = !!values.llm_model && !models?.options.some((o) => o.id === values.llm_model)
+  const modelHint = models?.ollama_available
+    ? 'Pick a cloud OpenAI model or a local model from Ollama.'
+    : 'Start Ollama (ollama serve) to also choose local models.'
 
   return (
     <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[1fr_280px]" noValidate aria-label={agent ? 'Edit agent' : 'Create agent'}>
@@ -114,7 +121,7 @@ export function AgentForm({ agent, onDone }: { agent?: Agent; onDone?: (a: Agent
         {builtin && (
           <div className="rounded-xl border border-sky-400/30 bg-sky-500/10 p-3 text-sm text-sky-100">
             This agent is defined in <code>learn_crewai.py</code>, which stays the source of truth for its role, goal, backstory and task.
-            You can change its display name, desk and appearance here.
+            You can change its display name, model, desk and appearance here.
           </div>
         )}
         <div className="grid gap-4 md:grid-cols-2">
@@ -130,6 +137,22 @@ export function AgentForm({ agent, onDone }: { agent?: Agent; onDone?: (a: Agent
         </Field>
         <Field label="Backstory" error={err('backstory')} htmlFor="f-backstory" hint="Personality and expertise that shape its answers.">
           <textarea id="f-backstory" rows={3} className={inputClass} value={values.backstory} disabled={disabledPrompt} onChange={(e) => set('backstory', e.target.value)} />
+        </Field>
+
+        <Field label="LLM model" error={err('llm_model')} htmlFor="f-model" hint={modelHint}>
+          <select id="f-model" className={inputClass} value={values.llm_model ?? ''} onFocus={() => void refreshModels()}
+            onChange={(e) => set('llm_model', e.target.value || null)}>
+            <option value="">Default ({models?.default ?? 'backend default'})</option>
+            <optgroup label="OpenAI (cloud, uses credits)">
+              {openaiOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}{o.available ? '' : ` (${o.unavailable_reason})`}</option>
+              ))}
+            </optgroup>
+            <optgroup label={models?.ollama_available ? 'Local (Ollama, free)' : 'Local (Ollama not running)'}>
+              {localOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+              {missingSelected && <option value={values.llm_model ?? ''}>{values.llm_model?.replace(/^ollama\//, '')} (not installed)</option>}
+            </optgroup>
+          </select>
         </Field>
 
         {!builtin && (
@@ -151,13 +174,6 @@ export function AgentForm({ agent, onDone }: { agent?: Agent; onDone?: (a: Agent
               </div>
               {err('tools') && <p className="text-xs font-semibold text-rose-300">{err('tools')}</p>}
             </fieldset>
-
-            <Field label="LLM model" error={err('llm_model')} htmlFor="f-model" hint="Approved models configured on the backend.">
-              <select id="f-model" className={inputClass} value={values.llm_model ?? ''} onChange={(e) => set('llm_model', e.target.value || null)}>
-                <option value="">Default ({models?.default ?? 'backend default'})</option>
-                {models?.allowed.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </Field>
 
             <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="text-sm font-black text-white">Workflow task</div>

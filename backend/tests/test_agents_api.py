@@ -109,6 +109,26 @@ def test_tools_and_models_endpoints(client, monkeypatch):
     assert tools["web_search"]["available"] is False
     models = client.get("/api/models").json()
     assert "gpt-4o-mini" in models["allowed"]
+    assert models["ollama_available"] is True
+    local = {o["id"]: o for o in models["options"] if o["provider"] == "ollama"}
+    assert set(local) == {"ollama/llama3.2:latest", "ollama/qwen2.5:7b"}
+    assert local["ollama/qwen2.5:7b"]["label"] == "qwen2.5:7b"
+
+
+def test_custom_agent_accepts_local_model(client):
+    resp = client.post("/api/agents", json={**VALID_AGENT, "llm_model": "ollama/qwen2.5:7b"})
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["llm_model"] == "ollama/qwen2.5:7b"
+    assert "valid Ollama" in _problems(client.post("/api/agents", json={**VALID_AGENT, "llm_model": "ollama/bad name"}))
+
+
+def test_builtin_model_can_be_changed_and_cleared(client):
+    resp = client.patch("/api/agents/agt_researcher", json={"llm_model": "ollama/llama3.2:latest"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["llm_model"] == "ollama/llama3.2:latest"
+    assert "approved" in _problems(client.patch("/api/agents/agt_writer", json={"llm_model": "evil-model"}))
+    resp = client.patch("/api/agents/agt_researcher", json={"llm_model": None})
+    assert resp.status_code == 200 and resp.json()["llm_model"] is None
 
 
 def test_error_shape(client):

@@ -72,9 +72,10 @@ cd frontend; npm run dev
 1. **Start** (top bar): enter a research topic and confirm. This makes real OpenAI calls and uses your credits. Avatars change to *Queued* and then *Working*, and the wall shows a live task board.
 2. **Click an avatar** (or pick one in the right-hand panel) to see its role, current task and latest activity. Progress is shown as "Working" because CrewAI reports only when a task starts and finishes, not a percentage.
 3. When the run completes, the findings open on the wall. Use the section tabs, **Read full screen** for a larger reading view, and **Return to office** to go back. **Show findings** in the top bar reopens the latest result.
-4. **Add Agent** (sidebar): fill in the form. Tick *Include in future workflow runs* and give the agent a task so it joins the next run after the Report Writer. Only `{topic}` may be used as a placeholder. The built-in agents' prompts come from `learn_crewai.py`; in the UI you can change only their name, look and desk.
-5. **Tasks**, **Results** and **Activity Logs** show the task board, previous runs with downloads, and a searchable event log.
-6. **Reset** returns all avatars to idle and clears the current run from the screen. Stored runs and results are kept.
+4. **Choose each agent's model**: open an agent (built-in or custom) and pick from the *LLM model* list. It shows the approved OpenAI models and every chat model installed in [Ollama](https://ollama.com) (for example `qwen2.5:7b` or `llama3.2:latest`). *Default* uses `OPENAI_MODEL` from `.env`. Local models cost nothing and need Ollama running (`ollama serve`); the OpenAI key is only required if at least one agent in the run uses an OpenAI model.
+5. **Add Agent** (sidebar): fill in the form. Tick *Include in future workflow runs* and give the agent a task so it joins the next run after the Report Writer. Only `{topic}` may be used as a placeholder. The built-in agents' prompts come from `learn_crewai.py`; in the UI you can change only their name, look and desk.
+6. **Tasks**, **Results** and **Activity Logs** show the task board, previous runs with downloads, and a searchable event log.
+7. **Reset** returns all avatars to idle and clears the current run from the screen. Stored runs and results are kept.
 
 ![Selected agent](docs/images/agent-selected.png)
 
@@ -114,6 +115,7 @@ Screenshots from the browser checks are saved to `frontend/smoke-output/`.
 | A run shows *Failed: Interrupted* | The backend stopped during that run. Runs cannot resume; start a new one. |
 | Port already in use | Find the process with `Get-NetTCPConnection -LocalPort 8000` (or 5173) and stop it. |
 | The office area is blank or shows "could not be displayed" | WebGL is unavailable. Enable hardware acceleration in the browser, or try another browser. |
+| Start fails with "Ollama is not reachable" or "is not installed" | Start Ollama (`ollama serve`) or pull the model (`ollama pull qwen2.5:7b`), or switch that agent back to an OpenAI model. |
 | Start fails with "tool 'web_search' is unavailable" | An enabled custom agent uses `web_search`, which needs `SERPER_API_KEY` in `.env`. Add the key, or remove the tool from that agent. |
 
 Error responses never include stack traces or secrets. Details are in the backend console.

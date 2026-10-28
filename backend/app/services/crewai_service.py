@@ -1,18 +1,17 @@
 """The only place the backend constructs or runs CrewAI objects."""
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from crewai import Agent, Task
+from crewai import LLM, Agent, Task
 
-import learn_crewai
 from app.core.errors import NotReadyError
 from app.database.models import AgentRecord
 from app.projects import BuiltCrew, ProjectDefinition
+from app.services.model_catalog import ModelCatalog, is_ollama
 from app.services.tool_registry import instantiate_tools
 
 LLMFactory = Callable[[str | None], Any]
@@ -30,25 +29,35 @@ class PlannedTask:
 class CrewAIService:
     """Builds fresh crews per run.
 
-    `llm_factory` lets tests substitute a fake LLM; when it is None the real
-    OpenAI-backed model names are used and an API key is required.
+    `llm_factory` lets tests substitute a fake LLM; when it is None real
+    OpenAI or local Ollama models are used, depending on each agent's model.
     """
 
-    def __init__(self, llm_factory: LLMFactory | None = None):
+    def __init__(self, llm_factory: LLMFactory | None = None, catalog: ModelCatalog | None = None):
         self.llm_factory = llm_factory
+        self.catalog = catalog
 
     @property
     def uses_real_llm(self) -> bool:
         return self.llm_factory is None
 
-    def check_ready(self) -> None:
-        if self.uses_real_llm and not os.getenv("OPENAI_API_KEY"):
-            raise NotReadyError("OPENAI_API_KEY is not configured on the backend")
+    def effective_model(self, model: str | None) -> str:
+        return model or self.catalog.default_model
+
+    def check_ready(self, plan: list[PlannedTask]) -> None:
+        if not self.uses_real_llm:
+            return
+        problems = self.catalog.readiness_problems(self.effective_model(p.agent.llm_model) for p in plan)
+        if problems:
+            raise NotReadyError("; ".join(problems), problems)
 
     def resolve_llm(self, model: str | None) -> Any:
         if self.llm_factory is not None:
             return self.llm_factory(model)
-        return model or os.getenv("OPENAI_MODEL", learn_crewai.DEFAULT_MODEL)
+        model = self.effective_model(model)
+        if is_ollama(model):
+            return LLM(model=model, base_url=self.catalog.ollama_base_url)
+        return model
 
     def plan(self, project: ProjectDefinition, participants: list[AgentRecord]) -> list[PlannedTask]:
         by_builtin = {a.builtin_key: a for a in participants if a.kind == "builtin"}
@@ -74,8 +83,11 @@ class CrewAIService:
     def build(self, project: ProjectDefinition, plan: list[PlannedTask], run_dir: Path) -> BuiltCrew:
         extra_agents: list[Agent] = []
         extra_tasks: list[Task] = []
+        builtin_llms: dict[str, Any] = {}
         for item in plan:
             if item.agent.kind != "custom":
+                if item.agent.llm_model:
+                    builtin_llms[item.agent.builtin_key] = self.resolve_llm(item.agent.llm_model)
                 continue
             rec = item.agent
             agent = Agent(
@@ -94,7 +106,8 @@ class CrewAIService:
                 expected_output=item.expected_output,
                 agent=agent,
             ))
-        built = project.build_crew(self.resolve_llm(None), run_dir, extra_agents, extra_tasks)
+        built = project.build_crew(self.resolve_llm(None), run_dir, extra_agents, extra_tasks,
+                                   agent_llms=builtin_llms)
         expected = [p.key for p in plan]
         actual = built.task_keys + [p.key for p in plan if p.agent.kind == "custom"]
         if actual != expected or len(built.crew.tasks) != len(plan):

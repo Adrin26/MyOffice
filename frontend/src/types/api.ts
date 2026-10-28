@@ -206,9 +206,19 @@ export interface ToolInfo {
   unavailable_reason: string | null
 }
 
+export interface ModelOption {
+  id: string
+  label: string
+  provider: 'openai' | 'ollama'
+  available: boolean
+  unavailable_reason: string | null
+}
+
 export interface ModelsInfo {
   default: string
   allowed: string[]
+  options: ModelOption[]
+  ollama_available: boolean
 }
 
 export interface AppSettings {
@@ -221,6 +231,7 @@ export interface Health {
   version: string
   crewai_version: string
   openai_key_configured: boolean
+  ollama_available: boolean
   schema_version: number
   active_run_id: string | null
 }

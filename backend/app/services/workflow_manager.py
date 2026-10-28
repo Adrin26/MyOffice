@@ -327,9 +327,9 @@ class WorkflowManager:
                 raise ConflictError(
                     "A workflow is already running", {"run_id": self.active_run_id}
                 )
-            self.crew_service.check_ready()
             plan = self.crew_service.plan(self.project, self.registry.participants())
             self._validate_plan(plan)
+            self.crew_service.check_ready(plan)
 
             now = utcnow_iso()
             run_id = f"run_{uuid.uuid4().hex[:12]}"
@@ -388,6 +388,8 @@ class WorkflowManager:
     def _validate_plan(self, plan: list[PlannedTask]) -> None:
         problems = []
         for p in plan:
+            if problem := self.registry.catalog.validate(p.agent.llm_model):
+                problems.append(f"{p.agent.name}: {problem}")
             if p.agent.kind != "custom":
                 continue
             for key in p.agent.tools or []:
@@ -396,8 +398,6 @@ class WorkflowManager:
                     problems.append(f"{p.agent.name}: unknown tool '{key}'")
                 elif spec.missing_env():
                     problems.append(f"{p.agent.name}: tool '{key}' is unavailable ({', '.join(spec.missing_env())} not set)")
-            if p.agent.llm_model and p.agent.llm_model not in self.settings.allowed_models:
-                problems.append(f"{p.agent.name}: model '{p.agent.llm_model}' is not approved")
             if not p.description or not p.expected_output:
                 problems.append(f"{p.agent.name}: task description and expected output are required")
         if problems:

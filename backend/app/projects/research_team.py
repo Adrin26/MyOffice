@@ -1,7 +1,7 @@
 """Adapter for the original `learn_crewai.py` research crew."""
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from functools import cached_property
 from pathlib import Path
 from typing import Any
@@ -85,6 +85,7 @@ class ResearchTeamProject(ProjectDefinition):
         run_dir: Path,
         extra_agents: Sequence[Agent],
         extra_tasks: Sequence[Task],
+        agent_llms: Mapping[str, Any] | None = None,
     ) -> BuiltCrew:
         report_path = run_dir / learn_crewai.REPORT_FILE
         crew = learn_crewai.build_crew(
@@ -92,6 +93,7 @@ class ResearchTeamProject(ProjectDefinition):
             output_file=str(report_path),
             extra_agents=extra_agents,
             extra_tasks=extra_tasks,
+            agent_llms=agent_llms,
         )
         base_keys = ["research", "analysis", "writing"]
         return BuiltCrew(crew=crew, task_keys=base_keys, report_path=report_path)

@@ -49,6 +49,7 @@ export function SettingsPanel() {
             <ul className="space-y-1 text-slate-300">
               <li>Status: <strong className="text-white">{health.status}</strong> · API v{health.version} · CrewAI {health.crewai_version} · schema v{health.schema_version}</li>
               <li>OpenAI key configured: <strong className={health.openai_key_configured ? 'text-emerald-300' : 'text-rose-300'}>{health.openai_key_configured ? 'yes' : 'no'}</strong> (the key itself never leaves the backend)</li>
+              <li>Local Ollama models: <strong className={health.ollama_available ? 'text-emerald-300' : 'text-slate-400'}>{health.ollama_available ? 'available' : 'Ollama not running'}</strong></li>
               <li>Pause is not offered: CrewAI's kickoff cannot be paused or safely cancelled once started.</li>
             </ul>
           ) : <p className="text-slate-400">Backend not reachable.</p>}

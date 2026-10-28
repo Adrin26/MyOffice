@@ -6,7 +6,7 @@ knows how to build a fresh crew. The CrewAI code itself stays in the project.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -57,4 +57,6 @@ class ProjectDefinition(ABC):
         run_dir: Path,
         extra_agents: Sequence[Agent],
         extra_tasks: Sequence[Task],
-    ) -> BuiltCrew: ...
+        agent_llms: Mapping[str, Any] | None = None,
+    ) -> BuiltCrew:
+        """`agent_llms` overrides `llm` for built-in agents, keyed by BuiltinAgentSpec.key."""
